@@ -1,7 +1,13 @@
 function ADPCMCutter(srcFile,dstDir,IntervalTime)
-% srcFile = '2014_09_22_C_noair-air.wav';
-% srcFile = 'REC001.wav';
-% mcc -m -R -nojvm -v ADPCMCutter.m
+% 
+% この関数は、IMA ADPCM 形式のwavファイル(srcFile)を IntervalTime(時間) の間隔で分割して
+% dstDirで指定したフォルダーに出力します。
+% 
+%  ADPCMCutter(srcFile)
+%  ADPCMCutter(srcFile,dstDir,)
+%  ADPCMCutter(srcFile,dstDir,IntervalTime)
+%  ADPCMCutter(srcFile,[],IntervalTime)
+% 
 
 if ~exist('dstDir','var') || isempty(dstDir),
     [dstDir,~,~] = fileparts(srcFile);
@@ -21,7 +27,7 @@ if strcmp(char(L.HEAD1(1:4))','RIFF')  && strcmp(char(L.HEAD1(9:12))','WAVE')
     data_header = fread(fid,8,'*uint8');
     data_chank_size = typecast(data_header((5:8))','uint32');
 else 
-    fprintf('ヘッダー情報が壊れています。修正して分割します\n');
+    warning('ヘッダー情報が壊れています。修正します。');
     L = load('header.mat');
     info = dir(srcFile);
     file_size = uint32(info.bytes - 8);
@@ -39,11 +45,14 @@ wSamplesPerBlock = double(typecast(L.HEAD2((19:20))','uint16'));
 
 % nAvgBytesPerSecの値が間違っているので計算し直す。
 % ADPCM の場合は 単純にサンプリング・レートをビット数で補正するだけじゃダメ
-nAvgBytesPerSec = ceil(nSamplesPerSec / wSamplesPerBlock * nBlockAlign);
-L.HEAD2(9:12)= typecast(uint32(nAvgBytesPerSec),'uint8');
+n = nSamplesPerSec / wSamplesPerBlock * nBlockAlign;
+nAvgBytesPerSec = double(typecast(L.HEAD2(9:12)','uint32'));
+if ~any(nAvgBytesPerSec == [ceil(n),floor(n)]),
+    warning('nAvgBytesPerSec の値が nSamplesPerSec / wSamplesPerBlock * nBlockAlign と一致しません。');   
+    warning('nAvgBytesPerSec の値を nSamplesPerSec / wSamplesPerBlock * nBlockAlign の値に修正します。');    
+    L.HEAD2(9:12)= typecast(uint32(floor(n)),'uint8');    
+end
 
-
-% wSamplesPerBlock = ((nBlockAlign - 4 ) * 8 / wBitsPerSample + 1);
 
 %%
 SamplePerIntarvalTime = nSamplesPerSec * IntervalTime * 60 * 60;
