@@ -6,7 +6,7 @@ IMA ADPCA 形式で保存された wavファイルを分割するmatlabのプロ
 matlabの関数として利用ください。以下の書式で利用できます。
 
 `ADPCMCutter(srcFile)`  
-`ADPCMCutter(srcFile,dstDir,)`  
+`ADPCMCutter(srcFile,dstDir)`  
 `ADPCMCutter(srcFile,dstDir,IntervalTime)`  
 `ADPCMCutter(srcFile,[],IntervalTime)`  
 
