@@ -1,13 +1,23 @@
 function ADPCMCutter(srcFile,dstDir,IntervalTime)
-% 
+%
 % この関数は、IMA ADPCM 形式のwavファイル(srcFile)を IntervalTime(時間) の間隔で分割して
 % dstDirで指定したフォルダーに出力します。
-% 
+%
 %  ADPCMCutter(srcFile)
 %  ADPCMCutter(srcFile,dstDir,)
 %  ADPCMCutter(srcFile,dstDir,IntervalTime)
 %  ADPCMCutter(srcFile,[],IntervalTime)
-% 
+%
+
+if ~exist('srcFile','var'),
+    warning('分割対象のファイルを入力してください。');
+    return;
+end
+
+if ~exist(srcFile,'file'),
+    warning('分割対象のファイル%sは見つかりません。',srcFile);
+    return;
+end
 
 if ~exist('dstDir','var') || isempty(dstDir),
     [dstDir,~,~] = fileparts(srcFile);
@@ -20,15 +30,22 @@ end
 fid = fopen(srcFile);
 %% HEAD
 L.HEAD1 = fread(fid,20,'*uint8');
-if strcmp(char(L.HEAD1(1:4))','RIFF')  && strcmp(char(L.HEAD1(9:12))','WAVE')         
+if strcmp(char(L.HEAD1(1:4))','RIFF')  && strcmp(char(L.HEAD1(9:12))','WAVE')
     file_size      = typecast(L.HEAD1((5:8))','uint32');
     fmt_chank_size = typecast(L.HEAD1((17:20))','uint32');
     L.HEAD2 = fread(fid,fmt_chank_size,'*uint8');
+    
+    if L.HEAD2(1) ~= 17,
+        warning('%sはIMA/DVI ADPCM形式ではありません。',srcFile);
+        return;
+    end
+    
     data_header = fread(fid,8,'*uint8');
     data_chank_size = typecast(data_header((5:8))','uint32');
-else 
+else
     warning('ヘッダー情報が壊れています。修正します。');
-    L = load('header.mat');
+    [srcDir,~,~] =  fileparts(mfilename('fullpath'));
+    L = load(fullfile(srcDir,'header.mat'));
     info = dir(srcFile);
     file_size = uint32(info.bytes - 8);
     fmt_chank_size = typecast(L.HEAD1((17:20))','uint32');
@@ -48,9 +65,9 @@ wSamplesPerBlock = double(typecast(L.HEAD2((19:20))','uint16'));
 n = nSamplesPerSec / wSamplesPerBlock * nBlockAlign;
 nAvgBytesPerSec = double(typecast(L.HEAD2(9:12)','uint32'));
 if ~any(nAvgBytesPerSec == [ceil(n),floor(n)]),
-    warning('nAvgBytesPerSec の値が nSamplesPerSec / wSamplesPerBlock * nBlockAlign と一致しません。');   
-    warning('nAvgBytesPerSec の値を nSamplesPerSec / wSamplesPerBlock * nBlockAlign の値に修正します。');    
-    L.HEAD2(9:12)= typecast(uint32(floor(n)),'uint8');    
+    warning('nAvgBytesPerSec の値が nSamplesPerSec / wSamplesPerBlock * nBlockAlign と一致しません。');
+    warning('nAvgBytesPerSec の値を nSamplesPerSec / wSamplesPerBlock * nBlockAlign の値に修正します。');
+    L.HEAD2(9:12)= typecast(uint32(floor(n)),'uint8');
 end
 
 
@@ -92,7 +109,6 @@ while 1
     k = k + 1;
 end
 
-% 0x0011	IMA/DVI ADPCM	Windows 標準サポート
-
 fclose(fid);
+
 end
